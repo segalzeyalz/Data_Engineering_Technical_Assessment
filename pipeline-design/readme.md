@@ -102,7 +102,54 @@ def task1():
     return "Task 1 completed successfully!"
 ```
 
-## Exectuion options
+### Exectuion options
+
+We can run the tasks using CLI:
+```bash
+# List all tasks
+python cli.py list_tasks
+# Run a task
+python cli.py run_task 1 "Task 1"
+# Check task status
+python cli.py task_status 1
+```
+This is implementing like this:
+```python
+@cli.command()
+@click.argument('task_id')
+@click.argument('task_name')
+def run_task(task_id, task_name):
+    """Run a task by ID and name."""
+    task_func = Tasks.get(task_name)
+    if not task_func:
+        click.echo(f"Task {task_name} not found!")
+        return
+    
+    task = Task(id=task_id, name=task_name, func=task_func)
+    task.run()
+    click.echo(f"Task {task_id} - {task_name} has been run. Status: {task.status}")
+
+@cli.command()
+@click.argument('task_id')
+def task_status(task_id):
+    """Check the status of a task by ID."""
+    task = Task.get_task_by_id(task_id)
+    if not task:
+        click.echo(f"Task {task_id} not found!")
+        return
+    
+    click.echo(f"Task {task_id} - {task.name} is {task.status}. Result: {task.result}")
+
+@cli.command()
+def list_tasks():
+    """List all tasks."""
+    tasks = Task.list_tasks()
+    for task in tasks:
+        click.echo(f"{task.id} - {task.name} - {task.status}")
+
+if __name__ == '__main__':
+    cli()
+```
 
 ## Telemetry and Monitoring
 Each task execution should be monitored, and its state and results should be stored. This allows for querying the execution status and results at any time.
