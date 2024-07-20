@@ -1,18 +1,64 @@
 # Pipeline Design
 
 ## Objective
-The objective of this assignment is to design and implement a data processing pipeline capable of
-executing various data processing tasks on raw data.
-This system will process the tasks, store the results in a database or data lake,
-and provide telemetry and monitoring capabilities.
+This assignment involves the design and development of a data pipeline
+system that would be able to execute multiple data processing jobs over the raw data.
+The system processes, stores results in a database and provides telemetry and monitoring capabilities.
 
-# Option 1:
+
+## Stack Selection
+
+### Chosen Stack: PostgreSQL
+
+I selected PostgreSQL as primary database for this data processing pipeline due to its robust features and suitability for the requirements.
+
+#### Reasons for Choosing PostgreSQL:
+
+1. **Structured Data Support**: each task have start time, id, func etc and duration, simple to monitor it that way and to query it although the tradeoffs like multiple fields might be different from task to task
+
+2. **Complex Query Capabilities**: PostgreSQL's powerful query engine enables efficient filtering, sorting, and aggregation of task data, which is crucial for monitoring and analysis, and will perform better that mongo for example.
+
+3. **ACID Compliance**: Ensures data integrity and consistency, which is good for tracking task states and results accurately.
+
+4. **Indexing Capabilities**: Allows for optimized querying on frequently accessed fields like status and timestamps, enhancing performance (these fields actually can be indexed in mongo too - which might be a great option here too).
+
+5. **Scalability**: PostgreSQL can handle large volumes of data and concurrent connections, supporting the growth of pipeline.
+
+6. **Integration with Monitoring Tools**: Easy integration with tools like Prometheus for metrics collection and visualization.
+
+### Trade-offs and Alternatives
+
+1. **MongoDB**: 
+   - Pro: Offers flexibility for tasks with varying data structures due to its schema-less nature.
+   - Con: May sacrifice some query performance and ACID compliance compared to PostgreSQL.
+
+2. **ElasticSearch**: - actually can be additional DB for the results saving and than make search efficiently
+   - Pro: Excels in full-text search and log analysis, which could be beneficial for complex log parsing or text-heavy task results.
+   - Con: May introduce additional complexity in setup and maintenance.
+
+How this is going to look like:
+1. System Architecture Diagram
+![System Architecture Diagram.png](System%20Architecture%20Diagram.png)
+
+
+2. Data Flow Diagram:
+![Data Flow Diagram.png](Data%20Flow%20Diagram.png)
+3. Task on database:
+
+![Task SQL.png](Task%20SQL.png)
+
+4. Sequence Diagram:
+![Sequence Diagram.png](Sequence%20Diagram.png)
+
 For this task we should have a map between tasks running and the functions.
 
 each Task model have a status (pending, running, completed, failed),
 function name, start time and end time.
 
 ```python
+# Metrics - we can use prometheus for this
+REQUEST_TIME = Summary('task_processing_seconds', 'Time spent processing task')
+TASK_COUNT = Counter('task_count', 'Number of tasks processed', ['status'])
 
 class TaskStatus:
     PENDING = 'pending'
@@ -34,14 +80,18 @@ class Task:
         try:
             self.status = TaskStatus.RUNNING
             self.start_time = datetime.now()
+            logging.info(f"Task {self.id} - {self.name} started.")
             self.result = self.func()
             self.status = TaskStatus.SUCCESS
         except Exception as e:
             self.status = TaskStatus.FAILED
             self.result = str(e)
+            logging.error(f"Task {self.id} - {self.name} failed with error: {e}")
         finally:
             self.end_time = datetime.now()
             self.save_to_db()
+            logging.info(f"Task {self.id} - {self.name} ended with status {self.status} and result: {self.result}")
+
 
     def save_to_db(self):
         session = Session()
@@ -152,16 +202,37 @@ if __name__ == '__main__':
 ```
 
 ## Telemetry and Monitoring
-Each task execution should be monitored, and its state and results should be stored. This allows for querying the execution status and results at any time.
+Each task has it's logs - and easy to check the status of the task.
 
-```python
-def example_task():
-    return "Task completed successfully!"
+Each task execution should be monitored, and its state and results should be logged and stored. This allows for querying the execution status and results at any time. Additionally, metrics should be collected to provide insights into the performance and reliability of the system.
 
-task = Task(id="1", name="Example Task", func=example_task)
-task.run()
+Each task has its logs and metrics, making it easy to check and monitor.
 
-print(task)
+### Logging
+- Detailed logs for each task execution, including start time, end time, duration, status, and errors, are stored in `task_log.log`.
 
+### Metrics
+- Task execution metrics are collected using Prometheus using the `prometheus_client` library (let''s assume have the ymls etc).
+- Metrics include:
+  - `task_processing_seconds`: Time spent processing each task.
+  - `task_count`: Number of tasks processed, categorized by status.
+
+### Logs
+Detailed logs for each task execution, including start time, end time, duration, status, and errors, are stored in task_log.log.
+
+### Example SQL Queries for Monitoring
+```sql
+# query all tasks
+SELECT * FROM tasks;
+# Query to get tasks by status
+SELECT * FROM tasks WHERE status='completed';
+#Query to get task details by ID:
+SELECT * FROM tasks WHERE id='1';
+#Query to get tasks executed within a specific time range:
+SELECT * FROM tasks WHERE start_time BETWEEN '2024-01-01' AND '2024-12-31';
+
+#Query to get the average execution time of tasks:
+SELECT AVG(strftime('%s', end_time) - strftime('%s', start_time)) as avg_execution_time FROM tasks WHERE status = 'completed';
+#Query to get the total number of tasks by status:
+SELECT status, COUNT(*) as count FROM tasks GROUP BY status;
 ```
-
