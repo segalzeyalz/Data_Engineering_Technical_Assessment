@@ -5,6 +5,7 @@ from db_config import ObjectsDetection, VehiclesStatus
 
 class FileHandler(FileSystemEventHandler):
     def __init__(self, session):
+        # In prod of course need multiple workers
         self.session = session
 
     def on_created(self, event: FileSystemEvent):

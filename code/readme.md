@@ -136,3 +136,4 @@ AND DATE(detection_time) = 'specific_date';
 #### Potential Bottlenecks
 - *Bulk Inserts*: When processing large JSON files, bulk inserts into the database can be a bottleneck. To improve performance, consider using batch inserts or optimizing the database schema.
 - *Streaming JSON Parsing* Implement streaming JSON parsing to handle large files more efficiently, reducing memory usage.
+- *Multi-threading*: i didn't use multithreading for now - but of course this can be an important thing
