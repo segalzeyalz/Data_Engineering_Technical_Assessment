@@ -1,0 +1,4 @@
+code/data/*
+.idea/*
+*/__pycache__/*
+venv/*

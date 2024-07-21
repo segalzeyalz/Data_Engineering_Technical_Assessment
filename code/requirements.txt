@@ -1,0 +1,4 @@
+sqlalchemy
+watchdog
+pymysql
+debugpy
